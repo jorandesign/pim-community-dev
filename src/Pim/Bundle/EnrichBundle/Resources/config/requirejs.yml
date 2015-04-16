@@ -56,6 +56,7 @@ config:
         pim/product-edit-form/save:                                pimenrich/js/product/form/save
         pim/product-edit-form/delete:                              pimenrich/js/product/form/delete
         pim/product-edit-form/meta/change-family:                  pimenrich/js/product/form/meta/change-family
+        pim/product-edit-form/meta/groups:                         pimenrich/js/product/form/meta/groups
         pim/product-edit-form/meta/created:                        pimenrich/js/product/form/meta/created
         pim/product-edit-form/meta/updated:                        pimenrich/js/product/form/meta/updated
         pim/product-edit-form/state:                               pimenrich/js/product/form/state
@@ -68,6 +69,7 @@ config:
         pim/attribute-manager:              pimenrich/js/product/attribute-manager
         pim/attribute-group-manager:        pimenrich/js/product/attribute-group-manager
         pim/config-manager:                 pimenrich/js/product/config-manager
+        pim/group-manager:                  pimenrich/js/product/group-manager
         pim/variant-group-manager:          pimenrich/js/product/variant-group-manager
         pim/completeness-manager:           pimenrich/js/product/completeness-manager
         pim/channel-manager:                pimenrich/js/product/channel-manager
@@ -109,6 +111,8 @@ config:
         pim/template/product/status-switcher:                        pimenrich/templates/product/status-switcher.html
         pim/template/product/download-pdf:                           pimenrich/templates/product/download-pdf.html
         pim/template/product/meta/change-family:                     pimenrich/templates/product/meta/change-family.html
+        pim/template/product/meta/groups:                            pimenrich/templates/product/meta/groups.html
+        pim/template/product/meta/group-modal:                       pimenrich/templates/product/meta/group-modal.html
         pim/template/product/state:                                  pimenrich/templates/product/state.html
         pim/template/product/meta/created:                           pimenrich/templates/product/meta/created.html
         pim/template/product/meta/updated:                           pimenrich/templates/product/meta/updated.html

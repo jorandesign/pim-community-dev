@@ -4,6 +4,7 @@ namespace Pim\Bundle\EnrichBundle\Controller;
 
 use Doctrine\ORM\EntityRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 /**
@@ -32,7 +33,7 @@ class VariantGroupRestController
         foreach ($variantGroups as $variantGroup) {
             $normalizedVariants[$variantGroup->getCode()] = $this->normalizer->normalize(
                 $variantGroup,
-                'json',
+                'internal_api',
                 ['with_variant_group_values' => true]
             );
         }
@@ -44,8 +45,12 @@ class VariantGroupRestController
     {
         $variantGroup = $this->variantGroupRepo->findOneByCode($identifier);
 
+        if (!$variantGroup) {
+            throw new NotFoundHttpException(sprintf('Variant group with code "%s" not found', $identifier));
+        }
+
         return new JsonResponse(
-            $this->normalizer->normalize($variantGroup, 'json', ['with_variant_group_values' => true])
+            $this->normalizer->normalize($variantGroup, 'internal_api', ['with_variant_group_values' => true])
         );
     }
 }
