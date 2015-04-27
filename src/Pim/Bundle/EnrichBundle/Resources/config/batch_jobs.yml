@@ -36,3 +36,13 @@ connector:
                     class: "%pim_enrich.step.mass_edit.remove_temporary_media.class%"
                     services:
                         cleaner: pim_enrich.mass_edit.temporary_file.cleaner
+        csv_product_quick_export:
+            title: csv_product_quick_export
+            type: quick_export
+            steps:
+                perform:
+                    title: csv_product_quick_export
+                    services:
+                        reader: pim_enrich.mass_edit.filtered.reader
+                        processor: pim_base_connector.processor.csv_serializer.product
+                        writer: pim_base_connector.writer.file.csv_product

@@ -2,102 +2,99 @@
 
 namespace Pim\Bundle\DataGridBundle\Controller;
 
-use Pim\Bundle\CatalogBundle\Context\CatalogContext;
-use Pim\Bundle\CatalogBundle\Manager\LocaleManager;
-use Pim\Bundle\CatalogBundle\Repository\ProductRepositoryInterface;
-use Pim\Bundle\DataGridBundle\Extension\MassAction\MassActionDispatcher;
-use Pim\Bundle\DataGridBundle\Extension\MassAction\Util\ProductFieldsBuilder;
+use Akeneo\Bundle\BatchBundle\Entity\JobExecution;
+use Akeneo\Component\StorageUtils\Saver\SaverInterface;
+use Pim\Bundle\DataGridBundle\Adapter\GridFilterAdapterInterface;
+use Pim\Bundle\EnrichBundle\Factory\MassEditJobConfigurationFactory;
+use Pim\Bundle\ImportExportBundle\Entity\Repository\JobInstanceRepository;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Security\Core\SecurityContextInterface;
 
 /**
- * Override ExportController for product exports
+ * Products quick export
  *
- * @author    Romain Monceau <romain@akeneo.com>
- * @copyright 2013 Akeneo SAS (http://www.akeneo.com)
+ * @author    Willy Mesnage <willy.mesnage@akeneo.com>
+ * @copyright 2015 Akeneo SAS (http://www.akeneo.com)
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
-class ProductExportController extends ExportController
+class ProductExportController
 {
-    /** @var ProductRepositoryInterface */
-    protected $productRepository;
+    /** @var Request */
+    protected $request;
 
-    /** @var LocaleManager */
-    protected $localeManager;
+    /** @var GridFilterAdapterInterface */
+    protected $gridFilterAdapter;
 
-    /** @var CatalogContext */
-    protected $catalogContext;
+    /** @var SaverInterface */
+    protected $jobConfigSaver;
 
-    /** @var ProductFieldsBuilder */
-    protected $fieldsBuilder;
+    /** @var MassEditJobConfigurationFactory */
+    protected $jobConfigFactory;
+
+    /** @var JobInstanceRepository */
+    protected $jobInstanceRepository;
+
+    /** @var SecurityContextInterface */
+    protected $securityContext;
 
     /**
-     * Constructor
-     *
-     * @param Request                    $request
-     * @param MassActionDispatcher       $massActionDispatcher
-     * @param SerializerInterface        $serializer
-     * @param ProductRepositoryInterface $productRepository
-     * @param LocaleManager              $localeManager
-     * @param CatalogContext             $catalogContext
-     * @param ProductFieldsBuilder       $fieldsBuilder
+     * @param Request                         $request
+     * @param GridFilterAdapterInterface      $gridFilterAdapter
+     * @param MassEditJobConfigurationFactory $jobConfigFactory
+     * @param SaverInterface                  $jobConfigSaver
+     * @param JobInstanceRepository           $jobInstanceRepository
+     * @param SecurityContextInterface        $securityContext
      */
     public function __construct(
         Request $request,
-        MassActionDispatcher $massActionDispatcher,
-        SerializerInterface $serializer,
-        ProductRepositoryInterface $productRepository,
-        LocaleManager $localeManager,
-        CatalogContext $catalogContext,
-        ProductFieldsBuilder $fieldsBuilder
+        GridFilterAdapterInterface $gridFilterAdapter,
+        MassEditJobConfigurationFactory $jobConfigFactory,
+        SaverInterface $jobConfigSaver,
+        JobInstanceRepository $jobInstanceRepository,
+        SecurityContextInterface $securityContext
     ) {
-        parent::__construct(
-            $request,
-            $massActionDispatcher,
-            $serializer
-        );
-
-        $this->productRepository = $productRepository;
-        $this->localeManager     = $localeManager;
-        $this->catalogContext    = $catalogContext;
-        $this->fieldsBuilder     = $fieldsBuilder;
+        $this->request               = $request;
+        $this->gridFilterAdapter     = $gridFilterAdapter;
+        $this->jobConfigFactory      = $jobConfigFactory;
+        $this->jobConfigSaver        = $jobConfigSaver;
+        $this->jobInstanceRepository = $jobInstanceRepository;
+        $this->securityContext       = $securityContext;
     }
 
     /**
-     * {@inheritdoc}
+     * Index action
      */
-    protected function createFilename()
+    public function indexAction()
     {
-        $dateTime = new \DateTime();
+        $rawConfiguration = json_encode($this->gridFilterAdapter->adapt($this->request));
+        $jobExecution = new JobExecution();
+        $massEditConf = $this->jobConfigFactory->create($jobExecution, $rawConfiguration);
 
-        return sprintf(
-            'products_export_%s_%s_%s.%s',
-            $this->catalogContext->getLocaleCode(),
-            $this->catalogContext->getScopeCode(),
-            $dateTime->format('Y-m-d_H-i-s'),
-            $this->getFormat()
-        );
+        $jobInstance = $this->jobInstanceRepository->findOneBy(['code' => 'product_quick_export_csv']);
+
+//        $this->jobConfigSaver->save($massEditConf);
+
+//        $this->simpleJobLauncher->launch($jobInstance, $this->getUser(), $rawConfiguration, $jobExecution);
+
     }
 
     /**
-     * {@inheritdoc}
+     * Get a user from the Security Context
+     *
+     * @return \Symfony\Component\Security\Core\User\UserInterface|null
+     *
+     * @see Symfony\Component\Security\Core\Authentication\Token\TokenInterface::getUser()
      */
-    protected function quickExport()
+    public function getUser()
     {
-        $productIds   = $this->massActionDispatcher->dispatch($this->request);
-        $fieldsList   = $this->fieldsBuilder->getFieldsList($productIds);
-        $attributeIds = $this->fieldsBuilder->getAttributeIds();
-        $context      = $this->getContext() + ['fields' => $fieldsList];
-
-        // batch output to avoid memory leak
-        $offset = 0;
-        $batchSize = 100;
-        while ($productsList = array_slice($productIds, $offset, $batchSize)) {
-            $results = $this->productRepository->getFullProducts($productsList, $attributeIds);
-            echo $this->serializer->serialize($results, $this->getFormat(), $context);
-            $offset += $batchSize;
-            flush();
-            $this->productRepository->getObjectManager()->clear();
+        if (null === $token = $this->securityContext->getToken()) {
+            return null;
         }
+
+        if (!is_object($user = $token->getUser())) {
+            return null;
+        }
+
+        return $user;
     }
 }
