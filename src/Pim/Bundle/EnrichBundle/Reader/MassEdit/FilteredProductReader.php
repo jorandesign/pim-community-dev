@@ -47,10 +47,10 @@ class FilteredProductReader extends AbstractConfigurableStepElement implements P
     protected $massEditRepository;
 
     /**
-     * @param ProductQueryBuilderFactoryInterface $pqbFactory
-     * @param ObjectManager                       $objectManager
-     * @param JobRepositoryInterface              $jobRepository
-     * @param MassEditRepositoryInterface         $massEditRepository
+     * @param ProductQueryBuilderFactoryInterface   $pqbFactory
+     * @param ObjectManager                         $objectManager
+     * @param JobRepositoryInterface                $jobRepository
+     * @param MassEditRepositoryInterface           $massEditRepository
      */
     public function __construct(
         ProductQueryBuilderFactoryInterface $pqbFactory,
