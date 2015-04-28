@@ -84,6 +84,7 @@ class SetAttributeRequirements extends FamilyMassEditOperation
      */
     public function removeAttributeRequirement(AttributeRequirementInterface $attributeRequirement)
     {
+        $attributeRequirement->setRequired(false);
         $this->attRequirements->removeElement($attributeRequirement);
     }
 
@@ -120,13 +121,7 @@ class SetAttributeRequirements extends FamilyMassEditOperation
     {
         foreach ($this->attRequirements as $attributeRequirement) {
             $family->addAttribute($attributeRequirement->getAttribute());
-            $family->addAttributeRequirement(
-                $this->factory->createAttributeRequirement(
-                    $attributeRequirement->getAttribute(),
-                    $attributeRequirement->getChannel(),
-                    $attributeRequirement->isRequired()
-                )
-            );
+            $family->addAttributeRequirement($attributeRequirement);
         }
     }
 }
