@@ -30,6 +30,13 @@ class SimpleJobLauncher extends BaseSimpleJobLauncher
     /** @var ObjectManager */
     protected $objectManager;
 
+    /**
+     * @param JobRepositoryInterface          $jobRepository
+     * @param MassEditJobConfigurationFactory $jobConfigFactory
+     * @param ObjectManager                   $objectManager
+     * @param string                          $rootDir
+     * @param string                          $environment
+     */
     public function __construct(
         JobRepositoryInterface $jobRepository,
         MassEditJobConfigurationFactory $jobConfigFactory,
@@ -75,7 +82,7 @@ class SimpleJobLauncher extends BaseSimpleJobLauncher
             !empty($rawConfiguration) ? sprintf('--config="%s"', $rawConfiguration) : '',
             $this->rootDir
         );
-
+//die($cmd);
         $this->launchInBackground($cmd);
 
         return $jobExecution;

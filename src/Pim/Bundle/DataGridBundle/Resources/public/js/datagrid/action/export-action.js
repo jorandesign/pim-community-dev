@@ -16,6 +16,9 @@ define(
 
             icon: 'download',
 
+            /** @property {oro.datagrid.Grid} */
+            datagrid: null,
+
             originalButtonSelector: 'div.grid-toolbar .mass-actions-panel .action.btn',
 
             originalButtonIcon: 'download',
@@ -31,6 +34,11 @@ define(
             ),
 
             initialize: function (options) {
+                if (!options.datagrid) {
+                    throw new TypeError("'datagrid' is required");
+                }
+                this.datagrid = options.datagrid;
+
                 if (_.has(options, 'label')) {
                     this.label = __(options.label);
                 }
@@ -74,7 +82,59 @@ define(
             },
 
             execute: function() {
-                this.originalButton.click();
+
+                $.ajax({
+                    url: this._getLink(),
+                    data: this._getActionParameters(),
+                    context: this,
+                    dataType: 'json',
+                    error: this._onAjaxError,
+                    success: this._onAjaxSuccess
+                });
+            },
+
+            _getLink: function() {
+                var metadata = this.$gridContainer.data('metadata');
+
+                var route = Routing.generate(metadata.massActions.quick_export_csv.route);
+
+                return route;
+            },
+
+            _getActionParameters: function() {
+                var selectionState = this.datagrid.getSelectionState();
+                var collection     = this.datagrid.collection;
+
+                var idValues = _.map(selectionState.selectedModels, function(model) {
+                    return model.get(this.identifierFieldName);
+                }, this);
+                var params = {
+                    inset: selectionState.inset ? 1 : 0,
+                    values: idValues.join(',')
+                };
+
+                params = this.getExtraParameters(params, collection.state);
+                params = collection.processFiltersParams(params, null, 'filters');
+
+                var locale = decodeURIComponent(this.datagrid.collection.url).split('dataLocale]=').pop();
+                if (locale) {
+                    params.dataLocale = locale;
+                }
+
+                return params;
+            },
+
+            _onAjaxError: function() {
+                return alert("broken");
+                //return new Modal({
+                //    title: this.messages.confirm_title,
+                //    content: this.messages.confirm_content,
+                //    okText: this.messages.confirm_ok
+                //});
+            },
+
+            _onAjaxSuccess: function() {
+                return null;
             }
         });
 

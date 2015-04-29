@@ -2,13 +2,14 @@
 
 namespace Pim\Bundle\DataGridBundle\Controller;
 
-use Akeneo\Bundle\BatchBundle\Entity\JobExecution;
-use Akeneo\Component\StorageUtils\Saver\SaverInterface;
+use Pim\Bundle\BaseConnectorBundle\JobLauncher\SimpleJobLauncher;
+use Pim\Bundle\CatalogBundle\Context\CatalogContext;
 use Pim\Bundle\DataGridBundle\Adapter\GridFilterAdapterInterface;
-use Pim\Bundle\EnrichBundle\Factory\MassEditJobConfigurationFactory;
+use Pim\Bundle\DataGridBundle\Extension\MassAction\MassActionDispatcher;
 use Pim\Bundle\ImportExportBundle\Entity\Repository\JobInstanceRepository;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\SecurityContextInterface;
+use Symfony\Component\Serializer\SerializerInterface;
 
 /**
  * Products quick export
@@ -17,19 +18,19 @@ use Symfony\Component\Security\Core\SecurityContextInterface;
  * @copyright 2015 Akeneo SAS (http://www.akeneo.com)
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
-class ProductExportController
+class ProductExportController extends ExportController
 {
-    /** @var Request */
-    protected $request;
+//    /** @var Request $request */
+//    protected $request;
+//
+//    /** @var MassActionDispatcher $massActionDispatcher */
+//    protected $massActionDispatcher;
+
+    /** @var SerializerInterface $serializer */
+    protected $serializer;
 
     /** @var GridFilterAdapterInterface */
     protected $gridFilterAdapter;
-
-    /** @var SaverInterface */
-    protected $jobConfigSaver;
-
-    /** @var MassEditJobConfigurationFactory */
-    protected $jobConfigFactory;
 
     /** @var JobInstanceRepository */
     protected $jobInstanceRepository;
@@ -37,45 +38,78 @@ class ProductExportController
     /** @var SecurityContextInterface */
     protected $securityContext;
 
+    /** @var SimpleJobLauncher */
+    protected $jobLauncher;
+
+    /** @var CatalogContext */
+    protected $catalogContext;
+
     /**
-     * @param Request                         $request
-     * @param GridFilterAdapterInterface      $gridFilterAdapter
-     * @param MassEditJobConfigurationFactory $jobConfigFactory
-     * @param SaverInterface                  $jobConfigSaver
-     * @param JobInstanceRepository           $jobInstanceRepository
-     * @param SecurityContextInterface        $securityContext
+     * @param Request                    $request
+     * @param MassActionDispatcher       $massActionDispatcher
+     * @param SerializerInterface        $serializer
+     * @param GridFilterAdapterInterface $gridFilterAdapter
+     * @param JobInstanceRepository      $jobInstanceRepository
+     * @param SecurityContextInterface   $securityContext
+     * @param SimpleJobLauncher          $jobLauncher
+     * @param CatalogContext             $catalogContext
      */
     public function __construct(
         Request $request,
+        MassActionDispatcher $massActionDispatcher,
+        SerializerInterface $serializer,
         GridFilterAdapterInterface $gridFilterAdapter,
-        MassEditJobConfigurationFactory $jobConfigFactory,
-        SaverInterface $jobConfigSaver,
         JobInstanceRepository $jobInstanceRepository,
-        SecurityContextInterface $securityContext
+        SecurityContextInterface $securityContext,
+        SimpleJobLauncher $jobLauncher,
+        CatalogContext $catalogContext
     ) {
-        $this->request               = $request;
+        parent::__construct($request, $massActionDispatcher, $serializer);
+
+//        $this->request               = $request;
+//        $this->massActionDispatcher  = $massActionDispatcher;
+        $this->serializer            = $serializer;
         $this->gridFilterAdapter     = $gridFilterAdapter;
-        $this->jobConfigFactory      = $jobConfigFactory;
-        $this->jobConfigSaver        = $jobConfigSaver;
         $this->jobInstanceRepository = $jobInstanceRepository;
         $this->securityContext       = $securityContext;
+        $this->jobLauncher           = $jobLauncher;
+        $this->catalogContext        = $catalogContext;
+    }
+//
+//    public function indexAction()
+//    {
+//        $rawConfiguration = json_encode($this->gridFilterAdapter->adapt($this->request));
+//        $jobInstance      = $this->jobInstanceRepository->findOneBy(['code' => 'product_quick_export_csv']);
+//
+//        $jobExecution = $this->jobLauncher->launch($jobInstance, $this->getUser(), $rawConfiguration);
+//
+//        return true;
+//    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function createFilename()
+    {
+        $dateTime = new \DateTime();
+        return sprintf(
+            'products_export_%s_%s_%s.%s',
+            $this->catalogContext->getLocaleCode(),
+            $this->catalogContext->getScopeCode(),
+            $dateTime->format('Y-m-d_H-i-s'),
+            $this->getFormat()
+        );
     }
 
     /**
-     * Index action
+     * {@inheritdoc}
      */
-    public function indexAction()
+    protected function quickExport()
     {
         $rawConfiguration = json_encode($this->gridFilterAdapter->adapt($this->request));
-        $jobExecution = new JobExecution();
-        $massEditConf = $this->jobConfigFactory->create($jobExecution, $rawConfiguration);
+        $jobInstance      = $this->jobInstanceRepository->findOneBy(['code' => 'product_quick_export_csv']);
 
-        $jobInstance = $this->jobInstanceRepository->findOneBy(['code' => 'product_quick_export_csv']);
-
-//        $this->jobConfigSaver->save($massEditConf);
-
-//        $this->simpleJobLauncher->launch($jobInstance, $this->getUser(), $rawConfiguration, $jobExecution);
-
+        $jobExecution = $this->jobLauncher->launch($jobInstance, $this->getUser(), $rawConfiguration);
     }
 
     /**
@@ -85,7 +119,7 @@ class ProductExportController
      *
      * @see Symfony\Component\Security\Core\Authentication\Token\TokenInterface::getUser()
      */
-    public function getUser()
+    protected function getUser()
     {
         if (null === $token = $this->securityContext->getToken()) {
             return null;
