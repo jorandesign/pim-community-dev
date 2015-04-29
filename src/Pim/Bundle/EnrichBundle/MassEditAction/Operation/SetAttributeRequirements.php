@@ -131,6 +131,25 @@ class SetAttributeRequirements extends AbstractMassEditOperation
     }
 
     /**
+     * {@inheritdoc}
+     */
+    public function getActions()
+    {
+        $attrRequirements = [];
+
+        /** @var AttributeRequirementInterface $attributeRequirement */
+        foreach ($this->attRequirements as $attributeRequirement) {
+            $attrRequirements[] = [
+                'attribute_code' => $attributeRequirement->getAttribute()->getCode(),
+                'channel_code' => $attributeRequirement->getChannel()->getCode(),
+                'is_required' => $attributeRequirement->isRequired()
+            ];
+        }
+
+        return $attrRequirements;
+    }
+
+    /**
      * Get the form options to configure the operation
      *
      * @return array
@@ -145,7 +164,7 @@ class SetAttributeRequirements extends AbstractMassEditOperation
      */
     public function getOperationAlias()
     {
-        return 'set-attribute-requirements';
+        return 'set_attribute_requirements';
     }
 
     /**
@@ -161,6 +180,6 @@ class SetAttributeRequirements extends AbstractMassEditOperation
      */
     public function getBatchJobCode()
     {
-        // TODO: Implement getBatchJobCode() method.
+        return 'set_attribute_requirements';
     }
 }

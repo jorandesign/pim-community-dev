@@ -193,6 +193,18 @@ class FamilyRepository extends EntityRepository implements FamilyRepositoryInter
     /**
      * {@inheritdoc}
      */
+    public function createQBFromFamiliesIds(array $familyIds)
+    {
+        $qb = $this->createQueryBuilder('f');
+
+        $qb->where($qb->expr()->in('f.id', $familyIds));
+
+        return $qb;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function findOneByIdentifier($code)
     {
         return $this->findOneBy(array('code' => $code));
