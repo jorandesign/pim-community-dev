@@ -2,6 +2,7 @@
 
 namespace Pim\Bundle\DataGridBundle\Extension\Filter;
 
+use Doctrine\Common\Cache\CacheProvider;
 use Oro\Bundle\DataGridBundle\Datagrid\Builder;
 use Oro\Bundle\DataGridBundle\Datagrid\Common\DatagridConfiguration;
 use Oro\Bundle\DataGridBundle\Datagrid\Common\MetadataObject;
@@ -43,19 +44,27 @@ class FilterExtension extends AbstractExtension
      */
     protected $adapterResolver;
 
+    /** @var  CacheProvider */
+    protected $cache;
+
     /**
      * @param RequestParameters         $requestParams
      * @param TranslatorInterface       $translator
      * @param DatasourceAdapterResolver $adapterResolver
+     * @param CacheProvider             $cache
      */
     public function __construct(
         RequestParameters $requestParams,
         TranslatorInterface $translator,
-        DatasourceAdapterResolver $adapterResolver
+        DatasourceAdapterResolver $adapterResolver,
+        CacheProvider $cache
     ) {
         $this->translator = $translator;
         $this->adapterResolver = $adapterResolver;
+
         parent::__construct($requestParams);
+
+        $this->cache = $cache;
     }
 
     /**
@@ -117,31 +126,47 @@ class FilterExtension extends AbstractExtension
      */
     public function visitMetadata(DatagridConfiguration $config, MetadataObject $data)
     {
-        $filtersState    = $data->offsetGetByPath('[state][filters]', []);
-        $filtersMetaData = [];
+        $cache = $this->cache;
+        $cacheKey = 'filters.' . md5(serialize($config->toArray()));
+        $cachedData = $cache->fetch($cacheKey);
 
-        $filters = $this->getFiltersToApply($config);
-        $values  = $this->getValuesToApply($config);
+        if (false === $cachedData) {
+            $filtersState    = $data->offsetGetByPath('[state][filters]', []);
+            $filtersMetaData = [];
 
-        foreach ($filters as $filter) {
-            $value = isset($values[$filter->getName()]) ? $values[$filter->getName()] : false;
+            $filters = $this->getFiltersToApply($config);
+            $values  = $this->getValuesToApply($config);
 
-            if ($value !== false) {
-                $form = $filter->getForm();
-                if (!$form->isSubmitted()) {
-                    $form->submit($value);
+            foreach ($filters as $filter) {
+                $value = isset($values[$filter->getName()]) ? $values[$filter->getName()] : false;
+
+                if ($value !== false) {
+                    $form = $filter->getForm();
+                    if (!$form->isSubmitted()) {
+                        $form->submit($value);
+                    }
+
+                    if ($form->isValid()) {
+                        $filtersState[$filter->getName()] = $value;
+                    }
                 }
 
-                if ($form->isValid()) {
-                    $filtersState[$filter->getName()] = $value;
+                if ('category' !== $filter->getName()) {
+                    $metadata          = $filter->getMetadata();
+                    $filtersMetaData[] = array_merge(
+                        $metadata,
+                        ['label' => $this->translator->trans($metadata['label'])]
+                    );
                 }
             }
-
-            $metadata          = $filter->getMetadata();
-            $filtersMetaData[] = array_merge(
-                $metadata,
-                ['label' => $this->translator->trans($metadata['label'])]
-            );
+            $cachedData = [
+                'state' => $filtersState,
+                'metadata' =>$filtersMetaData
+            ];
+            $cache->save($cacheKey, $cachedData, 600);
+        } else {
+            $filtersState    = $cachedData['state'];
+            $filtersMetaData = $cachedData['metadata'];
         }
 
         $data->offsetAddToArray('state', ['filters' => $filtersState])
@@ -193,6 +218,13 @@ class FilterExtension extends AbstractExtension
             $filters[] = $this->getFilterObject($column, $filter);
         }
 
+        $categoryConfig = [
+            'type'      => 'product_category',
+            'label'     => 'Category',
+            'data_name' => 'category',
+        ];
+        $filters[] = $this->getFilterObject('category', $categoryConfig);
+
         return $filters;
     }
 
@@ -213,7 +245,7 @@ class FilterExtension extends AbstractExtension
         $filterBy       = $this->requestParams->get(self::FILTER_ROOT_PARAM) ?: $defaultFilters;
 
         foreach ($filterBy as $column => $value) {
-            if (isset($filters[$column])) {
+            if (isset($filters[$column]) || $column == 'category') {
                 $result[$column] = $value;
             }
         }
